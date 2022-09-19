@@ -1,0 +1,59 @@
+%%%%
+clear all
+close all
+clc
+dy  = 0.01;
+y = (-2:dy:2)'; %spatial coordinate
+
+dt = 0.1;
+Nt = 101;
+tend = dt*(Nt-1);
+t = 0:dt:tend; %time
+
+% define function
+amp1 = 1;
+y01 = 0.5;
+sigmay1  = 0.6;
+
+amp2 = 1.2;
+y02 = -0.5;
+sigmay2  = 0.3;
+omega1 = 1.3;
+omega2 = 4.1;
+
+v1 = amp1*exp(-(y-y01).^2/(2*sigmay1^2));
+v2 = amp2*exp(-(y-y02).^2/(2*sigmay2^2));
+X = v1*exp(1i*omega1*t) + v2*exp(1i*omega2*t);
+%%%%%
+[Q,R,P] = qr(X,0);
+
+%% SVD of X 
+[U,S,V] = svd(X,"econ");
+% number of sensor we want 
+r = 2;
+% number of total modes 
+p = length(U);
+% Psi matrix
+Psi  = U(:,1:r);
+
+%% QR pivoting
+[Q,R,pivot] = qr(Psi',"vector");
+fprintf("The best two location of sensor is %d  and %d",pivot(1),pivot(2))
+
+% Build C matrix as a  permutation matrix
+C = zeros(r,p);
+for j = 1:r
+    C(j,pivot(j)) = 1;
+end
+
+Theta =  C * Psi;
+% Measure the pivot locations in dataset X
+y = X(pivot(1:r),:);
+%estimate coefficients 
+a = Theta\y;
+
+% Reconstruct the X 
+X_recon = U(:,1:r) * a;
+
+% Measure the difference between reconstructed matrix and original one
+difference = abs(max(X_recon-X))
